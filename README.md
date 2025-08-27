@@ -1,2 +1,1 @@
-# dj-set-organizer
-i love vibe coding
+# I 💖 VIBE CODING
