@@ -1,0 +1,272 @@
+name: Build and Release Organizador Set DJ
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install system dependencies
+      run: |
+        # Instalar dependências do sistema para librosa
+        choco install ffmpeg
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~\AppData\Local\pip\Cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install -r requirements.txt
+        
+    - name: Install additional audio dependencies
+      run: |
+        # Dependências adicionais para processamento de áudio
+        pip install soundfile
+        pip install resampy
+        pip install numba
+        pip install scikit-learn
+        pip install joblib
+        pip install packaging
+        pip install pooch
+        pip install audioread
+        pip install lazy-loader
+        pip install msgpack
+        
+    - name: Create PyInstaller spec file
+      run: |
+        cat > OrganizadorSetDJ_GitHub.spec << 'EOF'
+        # -*- mode: python ; coding: utf-8 -*-
+
+        block_cipher = None
+
+        # Lista completa de módulos ocultos necessários
+        hidden_imports = [
+            'librosa',
+            'librosa.core',
+            'librosa.feature',
+            'librosa.util',
+            'librosa.effects',
+            'librosa.onset',
+            'librosa.beat',
+            'librosa.tempo',
+            'librosa.decompose',
+            'librosa.filters',
+            'librosa.segment',
+            'librosa.sequence',
+            'librosa.display',
+            'soundfile',
+            'resampy',
+            'numba',
+            'numba.core',
+            'numba.typed',
+            'numba.types',
+            'numba.np',
+            'scipy',
+            'scipy.signal',
+            'scipy.fft',
+            'scipy.sparse',
+            'scipy.linalg',
+            'scipy.ndimage',
+            'scipy.interpolate',
+            'scipy.stats',
+            'scipy.optimize',
+            'scipy.spatial',
+            'scikit-learn',
+            'sklearn',
+            'sklearn.utils',
+            'sklearn.utils._cython_blas',
+            'sklearn.neighbors',
+            'sklearn.neighbors.typedefs',
+            'sklearn.neighbors.quad_tree',
+            'sklearn.tree',
+            'sklearn.tree._utils',
+            'joblib',
+            'packaging',
+            'packaging.version',
+            'packaging.specifiers',
+            'packaging.requirements',
+            'pooch',
+            'audioread',
+            'lazy_loader',
+            'msgpack',
+            'pygame',
+            'pygame.mixer',
+            'pygame.time',
+            'pygame.event',
+            'numpy',
+            'numpy.core',
+            'numpy.lib',
+            'numpy.linalg',
+            'numpy.fft',
+            'numpy.random',
+            'tkinter',
+            'tkinter.ttk',
+            'tkinter.filedialog',
+            'tkinter.messagebox',
+            'os',
+            'sys',
+            'threading',
+            'time',
+            'math',
+            'pathlib',
+            'glob',
+            'json',
+            're',
+            'collections',
+            'functools',
+            'warnings',
+            'decimal',
+        ]
+
+        # Dados a serem incluídos
+        datas = [
+            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/librosa/util/example_data/*', 'librosa/util/example_data/'),
+            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/librosa/data/*', 'librosa/data/'),
+            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/soundfile/data/*', 'soundfile/data/'),
+            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/resampy/data/*', 'resampy/data/'),
+            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/sklearn/datasets/data/*', 'sklearn/datasets/data/'),
+            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/sklearn/datasets/descr/*', 'sklearn/datasets/descr/'),
+            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/joblib/externals/loky/backend/*', 'joblib/externals/loky/backend/'),
+        ]
+
+        a = Analysis(
+            ['main.py'],
+            pathex=[],
+            binaries=[],
+            datas=datas,
+            hiddenimports=hidden_imports,
+            hookspath=[],
+            hooksconfig={},
+            runtime_hooks=[],
+            excludes=[],
+            win_no_prefer_redirects=False,
+            win_private_assemblies=False,
+            cipher=block_cipher,
+            noarchive=False,
+        )
+        pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+        exe = EXE(
+            pyz,
+            a.scripts,
+            a.binaries,
+            a.zipfiles,
+            a.datas,
+            [],
+            name='OrganizadorSetDJ',
+            debug=False,
+            bootloader_ignore_signals=False,
+            strip=False,
+            upx=True,
+            upx_exclude=[],
+            runtime_tmpdir=None,
+            console=False,
+            disable_windowed_traceback=False,
+            argv_emulation=False,
+            target_arch=None,
+            codesign_identity=None,
+            entitlements_file=None,
+            icon=None,
+        )
+        EOF
+        
+    - name: Build executable with PyInstaller
+      run: |
+        pyinstaller --clean OrganizadorSetDJ_GitHub.spec
+        
+    - name: Test executable
+      run: |
+        # Testar se o executável foi criado
+        if (Test-Path "dist/OrganizadorSetDJ.exe") {
+          Write-Host "Executável criado com sucesso!"
+          Get-ChildItem dist/OrganizadorSetDJ.exe | Format-List Name, Length, LastWriteTime
+        } else {
+          Write-Error "Falha ao criar o executável!"
+          exit 1
+        }
+        
+    - name: Prepare release artifacts
+      run: |
+        # Criar pasta de distribuição
+        New-Item -ItemType Directory -Force -Path "release"
+        
+        # Copiar executável
+        Copy-Item "dist/OrganizadorSetDJ.exe" "release/"
+        
+        # Copiar documentação
+        Copy-Item "README.md" "release/"
+        Copy-Item "COMO_GERAR_EXE.md" "release/"
+        
+        # Criar arquivo de versão
+        $version = if ($env:GITHUB_REF -match "refs/tags/(.+)") { $matches[1] } else { "dev-build" }
+        "Versão: $version`nData de Build: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Out-File -FilePath "release/VERSION.txt" -Encoding UTF8
+        
+    - name: Create ZIP archive
+      run: |
+        Compress-Archive -Path "release/*" -DestinationPath "OrganizadorSetDJ-Windows.zip"
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: OrganizadorSetDJ-Windows
+        path: |
+          release/
+          OrganizadorSetDJ-Windows.zip
+          
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          OrganizadorSetDJ-Windows.zip
+          release/OrganizadorSetDJ.exe
+        body: |
+          ## Organizador Set DJ - ${{ github.ref_name }}
+          
+          ### Download
+          - **OrganizadorSetDJ.exe**: Executável principal para Windows
+          - **OrganizadorSetDJ-Windows.zip**: Pacote completo com documentação
+          
+          ### Funcionalidades
+          - Interface gráfica intuitiva para organização de sets de DJ
+          - Análise automática de BPM, nota musical e volume
+          - Sistema de sugestões harmônicas baseado no Camelot Wheel
+          - Player integrado com barra de progresso interativa
+          - Drag & drop para organização de músicas
+          - Exportação de sets em formato de texto
+          
+          ### Como usar
+          1. Baixe o arquivo `OrganizadorSetDJ.exe`
+          2. Execute o arquivo (não precisa instalar)
+          3. Selecione uma pasta com suas músicas
+          4. Organize seu set arrastando as músicas
+          
+          ### Requisitos do Sistema
+          - Windows 10 ou superior
+          - Arquivos de áudio nos formatos: MP3, WAV, FLAC, OGG
+          
+          Data de build: $(date +'%Y-%m-%d %H:%M:%S')
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
