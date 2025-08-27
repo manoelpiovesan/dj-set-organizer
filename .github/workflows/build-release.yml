@@ -15,7 +15,7 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         
@@ -25,7 +25,7 @@ jobs:
         choco install ffmpeg
         
     - name: Cache pip dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~\AppData\Local\pip\Cache
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -38,157 +38,11 @@ jobs:
         pip install pyinstaller
         pip install -r requirements.txt
         
-    - name: Install additional audio dependencies
+    - name: Install additional dependencies for build
       run: |
-        # Dependências adicionais para processamento de áudio
-        pip install soundfile
-        pip install resampy
-        pip install numba
-        pip install scikit-learn
-        pip install joblib
-        pip install packaging
-        pip install pooch
-        pip install audioread
+        # Dependências extras para build robusto
         pip install lazy-loader
         pip install msgpack
-        
-    - name: Create PyInstaller spec file
-      run: |
-        cat > OrganizadorSetDJ_GitHub.spec << 'EOF'
-        # -*- mode: python ; coding: utf-8 -*-
-
-        block_cipher = None
-
-        # Lista completa de módulos ocultos necessários
-        hidden_imports = [
-            'librosa',
-            'librosa.core',
-            'librosa.feature',
-            'librosa.util',
-            'librosa.effects',
-            'librosa.onset',
-            'librosa.beat',
-            'librosa.tempo',
-            'librosa.decompose',
-            'librosa.filters',
-            'librosa.segment',
-            'librosa.sequence',
-            'librosa.display',
-            'soundfile',
-            'resampy',
-            'numba',
-            'numba.core',
-            'numba.typed',
-            'numba.types',
-            'numba.np',
-            'scipy',
-            'scipy.signal',
-            'scipy.fft',
-            'scipy.sparse',
-            'scipy.linalg',
-            'scipy.ndimage',
-            'scipy.interpolate',
-            'scipy.stats',
-            'scipy.optimize',
-            'scipy.spatial',
-            'scikit-learn',
-            'sklearn',
-            'sklearn.utils',
-            'sklearn.utils._cython_blas',
-            'sklearn.neighbors',
-            'sklearn.neighbors.typedefs',
-            'sklearn.neighbors.quad_tree',
-            'sklearn.tree',
-            'sklearn.tree._utils',
-            'joblib',
-            'packaging',
-            'packaging.version',
-            'packaging.specifiers',
-            'packaging.requirements',
-            'pooch',
-            'audioread',
-            'lazy_loader',
-            'msgpack',
-            'pygame',
-            'pygame.mixer',
-            'pygame.time',
-            'pygame.event',
-            'numpy',
-            'numpy.core',
-            'numpy.lib',
-            'numpy.linalg',
-            'numpy.fft',
-            'numpy.random',
-            'tkinter',
-            'tkinter.ttk',
-            'tkinter.filedialog',
-            'tkinter.messagebox',
-            'os',
-            'sys',
-            'threading',
-            'time',
-            'math',
-            'pathlib',
-            'glob',
-            'json',
-            're',
-            'collections',
-            'functools',
-            'warnings',
-            'decimal',
-        ]
-
-        # Dados a serem incluídos
-        datas = [
-            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/librosa/util/example_data/*', 'librosa/util/example_data/'),
-            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/librosa/data/*', 'librosa/data/'),
-            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/soundfile/data/*', 'soundfile/data/'),
-            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/resampy/data/*', 'resampy/data/'),
-            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/sklearn/datasets/data/*', 'sklearn/datasets/data/'),
-            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/sklearn/datasets/descr/*', 'sklearn/datasets/descr/'),
-            ('C:/hostedtoolcache/windows/Python/3.11.*/x64/Lib/site-packages/joblib/externals/loky/backend/*', 'joblib/externals/loky/backend/'),
-        ]
-
-        a = Analysis(
-            ['main.py'],
-            pathex=[],
-            binaries=[],
-            datas=datas,
-            hiddenimports=hidden_imports,
-            hookspath=[],
-            hooksconfig={},
-            runtime_hooks=[],
-            excludes=[],
-            win_no_prefer_redirects=False,
-            win_private_assemblies=False,
-            cipher=block_cipher,
-            noarchive=False,
-        )
-        pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-
-        exe = EXE(
-            pyz,
-            a.scripts,
-            a.binaries,
-            a.zipfiles,
-            a.datas,
-            [],
-            name='OrganizadorSetDJ',
-            debug=False,
-            bootloader_ignore_signals=False,
-            strip=False,
-            upx=True,
-            upx_exclude=[],
-            runtime_tmpdir=None,
-            console=False,
-            disable_windowed_traceback=False,
-            argv_emulation=False,
-            target_arch=None,
-            codesign_identity=None,
-            entitlements_file=None,
-            icon=None,
-        )
-        EOF
         
     - name: Build executable with PyInstaller
       run: |
@@ -226,7 +80,7 @@ jobs:
         Compress-Archive -Path "release/*" -DestinationPath "OrganizadorSetDJ-Windows.zip"
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: OrganizadorSetDJ-Windows
         path: |
@@ -235,7 +89,7 @@ jobs:
           
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           OrganizadorSetDJ-Windows.zip
@@ -265,7 +119,7 @@ jobs:
           - Windows 10 ou superior
           - Arquivos de áudio nos formatos: MP3, WAV, FLAC, OGG
           
-          Data de build: $(date +'%Y-%m-%d %H:%M:%S')
+          Build gerado automaticamente via GitHub Actions
         draft: false
         prerelease: false
       env:
